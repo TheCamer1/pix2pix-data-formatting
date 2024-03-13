@@ -68,32 +68,34 @@ def create_pix2pix_structure(ct_dir, mr_dir, dest_dir, split, patient_name):
     dest_split_dir_B.mkdir(parents=True, exist_ok=True)
 
     for folder_index, (ct_folder, mr_folder) in enumerate(zip(ct_folders, mr_folders)):
-        ct_files = list(ct_folder.glob("*.dcm"))
-        mr_files = list(mr_folder.glob("*.dcm"))
+        ct_files = list(ct_folder.glob("*.dcm"))[10:-10]  # Skip first 10 and last 10
+        mr_files = list(mr_folder.glob("*.dcm"))[10:-10]  # Skip first 10 and last 10
 
-        # Find the middle file for CT for boundary calculation
-        middle_ct_file = ct_files[len(ct_files) // 2]
-        ct_crop_top, ct_crop_bottom = find_crop_boundaries(middle_ct_file)
-        
-        # Find the middle file for MR for boundary calculation and process in reverse
-        mr_files_reversed = sorted(mr_files, key=lambda x: pydicom.dcmread(x).ImagePositionPatient[2], reverse=True)
-        middle_mr_file = mr_files_reversed[len(mr_files_reversed) // 2]
-        mr_crop_top, mr_crop_bottom = find_crop_boundaries(middle_mr_file)
+        # Ensure there are enough MR and CT files after skipping
+        if len(ct_files) > 0 and len(mr_files) > 0:
+            # Calculate crop boundaries for CT
+            middle_ct_file = ct_files[len(ct_files) // 2]
+            ct_crop_top, ct_crop_bottom = find_crop_boundaries(middle_ct_file)
+            
+            # Calculate crop boundaries for MR and reverse the order
+            mr_files_reversed = sorted(mr_files, key=lambda x: pydicom.dcmread(x).ImagePositionPatient[2], reverse=True)
+            middle_mr_file = mr_files_reversed[len(mr_files_reversed) // 2]
+            mr_crop_top, mr_crop_bottom = find_crop_boundaries(middle_mr_file)
 
-        # Process CT images
-        for ct_file in ct_files:
-            ct_dcm = pydicom.dcmread(ct_file)
-            ct_image_number = ct_dcm[0x0020, 0x0013].value
-            ct_jpg_filename = f"{patient_name}_{folder_index}_{ct_image_number}.jpg"
-            ct_jpg_path = dest_split_dir_B / ct_jpg_filename
-            convert_dcm_to_jpg(ct_file, ct_jpg_path, ct_crop_top, ct_crop_bottom)
+            # Process CT images
+            for ct_file in ct_files:
+                ct_dcm = pydicom.dcmread(ct_file)
+                ct_image_number = ct_dcm[0x0020, 0x0013].value
+                ct_jpg_filename = f"{patient_name}_{folder_index}_{ct_image_number}.jpg"
+                ct_jpg_path = dest_split_dir_B / ct_jpg_filename
+                convert_dcm_to_jpg(ct_file, ct_jpg_path, ct_crop_top, ct_crop_bottom)
 
-        # Process MR images in reverse order
-        for mr_file in mr_files_reversed:
-            mr_image_number = mr_files_reversed.index(mr_file) + 1  # Calculate image number based on reversed position
-            mr_jpg_filename = f"{patient_name}_{folder_index}_{mr_image_number}.jpg"
-            mr_jpg_path = dest_split_dir_A / mr_jpg_filename
-            convert_dcm_to_jpg(mr_file, mr_jpg_path, mr_crop_top, mr_crop_bottom)
+            # Process MR images in reverse order
+            for mr_file in mr_files_reversed:
+                mr_image_number = mr_files_reversed.index(mr_file) + 1  # Calculate image number based on reversed position
+                mr_jpg_filename = f"{patient_name}_{folder_index}_{mr_image_number}.jpg"
+                mr_jpg_path = dest_split_dir_A / mr_jpg_filename
+                convert_dcm_to_jpg(mr_file, mr_jpg_path, mr_crop_top, mr_crop_bottom)
             
 def find_crop_boundaries(dcm_path):
     dcm = pydicom.dcmread(dcm_path)
