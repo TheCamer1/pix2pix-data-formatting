@@ -68,8 +68,8 @@ def create_pix2pix_structure(ct_dir, mr_dir, dest_dir, split, patient_name):
     dest_split_dir_B.mkdir(parents=True, exist_ok=True)
 
     for folder_index, (ct_folder, mr_folder) in enumerate(zip(ct_folders, mr_folders)):
-        ct_files = list(ct_folder.glob("*.dcm"))[10:-10]  # Skip first 10 and last 10
-        mr_files = list(mr_folder.glob("*.dcm"))[10:-10]  # Skip first 10 and last 10
+        ct_files = sorted(list(ct_folder.glob("*.dcm")), key=lambda x: pydicom.dcmread(x)[0x0020, 0x0013].value)[10:-10]  # Skip first 10 and last 10
+        mr_files = list(mr_folder.glob("*.dcm"))
 
         # Ensure there are enough MR and CT files after skipping
         if len(ct_files) > 0 and len(mr_files) > 0:
@@ -78,7 +78,7 @@ def create_pix2pix_structure(ct_dir, mr_dir, dest_dir, split, patient_name):
             ct_crop_top, ct_crop_bottom = find_crop_boundaries(middle_ct_file)
             
             # Calculate crop boundaries for MR and reverse the order
-            mr_files_reversed = sorted(mr_files, key=lambda x: pydicom.dcmread(x).ImagePositionPatient[2], reverse=True)
+            mr_files_reversed = sorted(mr_files, key=lambda x: pydicom.dcmread(x).ImagePositionPatient[2], reverse=True)[10:-10]  # Skip first 10 and last 10
             middle_mr_file = mr_files_reversed[len(mr_files_reversed) // 2]
             mr_crop_top, mr_crop_bottom = find_crop_boundaries(middle_mr_file)
 
